@@ -48,15 +48,23 @@ import android.widget.Toast;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class MainActivity extends AppCompatActivity {
 
+
+
+
     static String[] REQUIREDPERMISSION = new String[]{"android.permission.CAMERA","android.permission.WRITE_EXTERNAL_STORAGE"};
     TextureView textureView;
     Button start;
     Button stop;
+    TextView textView;
 
 
 
@@ -67,6 +75,7 @@ public class MainActivity extends AppCompatActivity {
         textureView = findViewById(R.id.textureView);
         start = findViewById(R.id.button);
         stop = findViewById(R.id.button2);
+        textView = findViewById(R.id.textView2);
 
         getSupportActionBar().hide();
 
@@ -255,5 +264,6 @@ public class MainActivity extends AppCompatActivity {
         byte[] imageBytes = out.toByteArray();
         return BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
     }
+
 
 }

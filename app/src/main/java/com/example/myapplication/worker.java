@@ -38,12 +38,18 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class worker extends Worker{
 
     private String Image;
     private String mrotationaldesgrees;
+
+    Map<String, Integer> labless = new HashMap<>();
+
 
     public worker(@NonNull Context context, @NonNull WorkerParameters workerParams) {
         super(context, workerParams);
@@ -86,6 +92,7 @@ public class worker extends Worker{
 
             labeler.processImage(image)
                     .addOnSuccessListener(new OnSuccessListener<List<FirebaseVisionImageLabel>>() {
+
                         @Override
                         public void onSuccess(List<FirebaseVisionImageLabel> labels) {
                             for (FirebaseVisionImageLabel label: labels) {
@@ -93,13 +100,8 @@ public class worker extends Worker{
                                 float confidence = label.getConfidence();
                                 if(confidence>=0.8) {
                                     postToastMessage(text);
+
                                 }
-                                Image = getInputData().getString("image");
-
-
-                                delete(Image);
-
-
 
 
                             }
@@ -111,6 +113,12 @@ public class worker extends Worker{
                            Toast.makeText(getApplicationContext(),e.getMessage(),Toast.LENGTH_SHORT).show();
                         }
                     });
+            Image = getInputData().getString("image");
+
+
+
+
+            delete(Image);
 
         } catch (IOException e) {
             e.printStackTrace();
@@ -119,19 +127,26 @@ public class worker extends Worker{
     }
 
     private void delete(String image) {
+        Handler handler = new Handler(Looper.getMainLooper());
+                handler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        Uri uri = Uri.parse(image);
 
-        Uri uri = Uri.parse(image);
+                        File fdelete = new File(getFilePath(uri));
 
-        File fdelete = new File(getFilePath(uri));
+                        if (fdelete.exists()) {
+                            if (fdelete.delete()) {
+                                System.out.println("file Deleted :"+uri.toString() );
+                                getApplicationContext().sendBroadcast(new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.fromFile(fdelete)));
+                            } else {
+                                System.out.println("file not Deleted :");
+                            }
+                        }
+                    }
+                });
 
-        if (fdelete.exists()) {
-            if (fdelete.delete()) {
-                System.out.println("file Deleted :"+uri.toString() );
-                getApplicationContext().sendBroadcast(new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.fromFile(fdelete)));
-            } else {
-                System.out.println("file not Deleted :");
-            }
-        }
+
     }
 
     public void postToastMessage(final String message) {
@@ -160,6 +175,8 @@ public class worker extends Worker{
         }
         return null;
     }
+
+
 
 
 
