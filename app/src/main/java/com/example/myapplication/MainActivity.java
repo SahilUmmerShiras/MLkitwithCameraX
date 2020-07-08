@@ -69,14 +69,14 @@ public class MainActivity extends AppCompatActivity {
 
         getSupportActionBar().hide();
 
+        startCamera();
+
         if(allPermissiongranted()) {
-
-
 
             start.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    startCamera();
+                    Toast(getApplicationContext(),"blah something",Toast.LENGTH_SHORT).show();
                 }
             });
 
