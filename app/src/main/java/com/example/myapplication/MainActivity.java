@@ -69,14 +69,23 @@ public class MainActivity extends AppCompatActivity {
 
         getSupportActionBar().hide();
 
+<<<<<<< HEAD
+        
+=======
+        startCamera();
+>>>>>>> 7c1fc09e9fdd0bc4ed91d451184ddd147e44f362
+
         if(allPermissiongranted()) {
-
-
 
             start.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
+<<<<<<< HEAD
                     startCamera();
+                    // Toast(getApplicationContext(),"blah something",Toast.LENGTH_SHORT).show();
+=======
+                    Toast(getApplicationContext(),"blah something",Toast.LENGTH_SHORT).show();
+>>>>>>> 7c1fc09e9fdd0bc4ed91d451184ddd147e44f362
                 }
             });
 
