@@ -44,6 +44,7 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.widget.ToggleButton;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -64,7 +65,7 @@ public class MainActivity extends AppCompatActivity {
     TextureView textureView;
     Button start;
     Button stop;
-    TextView textView;
+    ToggleButton flip;
 
 
 
@@ -75,7 +76,10 @@ public class MainActivity extends AppCompatActivity {
         textureView = findViewById(R.id.textureView);
         start = findViewById(R.id.button);
         stop = findViewById(R.id.button2);
-        textView = findViewById(R.id.textView2);
+        flip = findViewById(R.id.flip);
+
+
+
 
         getSupportActionBar().hide();
 
@@ -96,6 +100,7 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 public void onClick(View v) {
                     CameraX.unbindAll();
+                    flip.setEnabled(true);
                 }
             });
 
@@ -130,9 +135,25 @@ public class MainActivity extends AppCompatActivity {
     private void startCamera(){
 
         CameraX.unbindAll();
-        Preview preview = new Preview(
-                new PreviewConfig.Builder().build()
-        );
+        Preview preview = null;
+        flip.setEnabled(false);
+        String cam = (String) flip.getText();
+        if(cam.equals("FRONT"))
+        {
+            preview = new Preview(
+                    new PreviewConfig.Builder().setLensFacing(CameraX.LensFacing.FRONT).build()
+            );
+            textureView.setScaleX(-1);
+        }
+        
+        else if (cam.equals("BACK"))
+        {
+            preview = new Preview(
+                    new PreviewConfig.Builder().setLensFacing(CameraX.LensFacing.BACK).build()
+            );
+            textureView.setScaleX(1);
+        }
+        
 
         preview.setOnPreviewOutputUpdateListener(new Preview.OnPreviewOutputUpdateListener() {
             @Override
@@ -148,8 +169,17 @@ public class MainActivity extends AppCompatActivity {
 
                 updateTransform();
 
+
             }
         });
+
+
+        imageanalysis(preview);
+
+
+    }
+
+    private void imageanalysis(Preview preview) {
         ExecutorService executor = Executors.newFixedThreadPool(1);
 
         ImageAnalysisConfig imageAnalysisConfig = new ImageAnalysisConfig.Builder()
@@ -193,10 +223,6 @@ public class MainActivity extends AppCompatActivity {
                         .enqueue(uploadWorkRequest);
 
 
-
-
-
-
             }
         });
         CameraX.bindToLifecycle(this, preview, imageAnalyzer);
@@ -231,6 +257,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         mx.postRotate((float)rotationDgr, cX, cY);
+        textureView.setScaleX(1);
         textureView.setTransform(mx);
     }
 
