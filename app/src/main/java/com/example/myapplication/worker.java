@@ -1,5 +1,6 @@
 package com.example.myapplication;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
@@ -14,13 +15,20 @@ import android.os.Looper;
 import android.provider.ContactsContract;
 import android.provider.DocumentsContract;
 import android.provider.MediaStore;
+import android.service.carrier.CarrierMessagingService;
 import android.util.Log;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.camera.core.ImageAnalysis;
 import androidx.camera.core.ImageProxy;
+import androidx.fragment.app.FragmentActivity;
+import androidx.lifecycle.ViewModel;
+import androidx.lifecycle.ViewModelProvider;
+import androidx.lifecycle.ViewModelProviders;
 import androidx.loader.content.CursorLoader;
+import androidx.work.Data;
+import androidx.work.ListenableWorker;
 import androidx.work.Worker;
 import androidx.work.WorkerParameters;
 
@@ -43,12 +51,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class worker extends Worker{
+public class worker extends Worker {
 
     private String Image;
     private String mrotationaldesgrees;
-
-    Map<String, Integer> labless = new HashMap<>();
 
 
     public worker(@NonNull Context context, @NonNull WorkerParameters workerParams) {
@@ -56,10 +62,13 @@ public class worker extends Worker{
     }
 
 
+
+
+
+    @SuppressLint("RestrictedApi")
     @NonNull
     @Override
     public Result doWork(){
-
 
         mrotationaldesgrees = getInputData().getString("degree");
         Image = getInputData().getString("image");
@@ -68,63 +77,13 @@ public class worker extends Worker{
 
         Uri uri = Uri.parse(Image);
 
-        Log.d("file added", uri.toString());
-
-        mlkit(uri);
-
+        delete(Image);
 
 
         return Result.success();
-    }
-
-
-
-    private void mlkit(Uri uri) {
-        FirebaseVisionImage image;
-        try {
-
-            image = FirebaseVisionImage.fromFilePath(getApplicationContext(), uri);
-
-
-            FirebaseVisionImageLabeler labeler = FirebaseVision.getInstance()
-                    .getOnDeviceImageLabeler();
-
-
-            labeler.processImage(image)
-                    .addOnSuccessListener(new OnSuccessListener<List<FirebaseVisionImageLabel>>() {
-
-                        @Override
-                        public void onSuccess(List<FirebaseVisionImageLabel> labels) {
-                            for (FirebaseVisionImageLabel label: labels) {
-                                String text = label.getText();
-                                float confidence = label.getConfidence();
-                                if(confidence>=0.8) {
-                                    postToastMessage(text);
-
-                                }
-
-
-                            }
-                        }
-                    })
-                    .addOnFailureListener(new OnFailureListener() {
-                        @Override
-                        public void onFailure(@NonNull Exception e) {
-                           Toast.makeText(getApplicationContext(),e.getMessage(),Toast.LENGTH_SHORT).show();
-                        }
-                    });
-            Image = getInputData().getString("image");
-
-
-
-
-            delete(Image);
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
 
     }
+
 
     private void delete(String image) {
         Handler handler = new Handler(Looper.getMainLooper());
@@ -149,17 +108,7 @@ public class worker extends Worker{
 
     }
 
-    public void postToastMessage(final String message) {
-        Handler handler = new Handler(Looper.getMainLooper());
 
-        handler.post(new Runnable() {
-
-            @Override
-            public void run() {
-                Toast.makeText(getApplicationContext(), message, Toast.LENGTH_LONG).show();
-            }
-        });
-    }
 
     private String getFilePath(Uri uri) {
         String[] projection = {MediaStore.Images.Media.DATA};
@@ -175,9 +124,6 @@ public class worker extends Worker{
         }
         return null;
     }
-
-
-
 
 
 

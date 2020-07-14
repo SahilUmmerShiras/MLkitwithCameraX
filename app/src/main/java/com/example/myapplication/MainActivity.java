@@ -14,9 +14,13 @@ import androidx.camera.core.Preview;
 import androidx.camera.core.PreviewConfig;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.fragment.app.FragmentActivity;
 import androidx.lifecycle.LifecycleOwner;
+import androidx.lifecycle.Observer;
+import androidx.lifecycle.ViewModelProviders;
 import androidx.work.Data;
 import androidx.work.OneTimeWorkRequest;
+import androidx.work.WorkInfo;
 import androidx.work.WorkManager;
 import androidx.work.WorkRequest;
 
@@ -35,6 +39,8 @@ import android.media.Image;
 import android.net.Uri;
 import android.os.Bundle;
 
+import android.os.Handler;
+import android.os.Looper;
 import android.provider.MediaStore;
 import android.util.Log;
 import android.view.Surface;
@@ -46,8 +52,16 @@ import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ToggleButton;
 
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.firebase.ml.vision.FirebaseVision;
+import com.google.firebase.ml.vision.common.FirebaseVisionImage;
+import com.google.firebase.ml.vision.label.FirebaseVisionImageLabel;
+import com.google.firebase.ml.vision.label.FirebaseVisionImageLabeler;
+
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -59,15 +73,15 @@ import java.util.concurrent.Executors;
 public class MainActivity extends AppCompatActivity {
 
 
-
-
     static String[] REQUIREDPERMISSION = new String[]{"android.permission.CAMERA","android.permission.WRITE_EXTERNAL_STORAGE"};
     TextureView textureView;
     Button start;
     Button stop;
     ToggleButton flip;
+    TextView textView;
 
 
+    myviewmodel myviewmodel;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -77,13 +91,9 @@ public class MainActivity extends AppCompatActivity {
         start = findViewById(R.id.button);
         stop = findViewById(R.id.button2);
         flip = findViewById(R.id.flip);
-
-
-
+        textView = findViewById(R.id.textView);
 
         getSupportActionBar().hide();
-
-
 
         if(allPermissiongranted()) {
 
@@ -92,7 +102,7 @@ public class MainActivity extends AppCompatActivity {
                 public void onClick(View v) {
                     startCamera();
                     // Toast(getApplicationContext(),"blah something",Toast.LENGTH_SHORT).show();
-                    Toast.makeText(getApplicationContext(),"blah something", Toast.LENGTH_SHORT).show();
+
                 }
             });
 
@@ -112,8 +122,13 @@ public class MainActivity extends AppCompatActivity {
         }
 
 
-
-
+        myviewmodel = ViewModelProviders.of(this).get(myviewmodel.class);
+        myviewmodel.getText().observe(this, new Observer<String>() {
+            @Override
+            public void onChanged(String s) {
+                textView.setText(s);
+            }
+        });
 
     }
 
@@ -144,6 +159,7 @@ public class MainActivity extends AppCompatActivity {
                     new PreviewConfig.Builder().setLensFacing(CameraX.LensFacing.FRONT).build()
             );
             textureView.setScaleX(-1);
+
         }
         
         else if (cam.equals("BACK"))
@@ -162,13 +178,9 @@ public class MainActivity extends AppCompatActivity {
                 ViewGroup parent = (ViewGroup) textureView.getParent();
                 parent.removeView(textureView);
                 parent.addView(textureView, 0);
-
                 textureView.setSurfaceTexture(output.getSurfaceTexture());
 
-
-
                 updateTransform();
-
 
             }
         });
@@ -190,42 +202,89 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void analyze(ImageProxy image, int rotationDegrees) {
 
-                Image ohi = image.getImage();
+                Image image1 = image.getImage();
 
-                Bitmap yo = toBitmap(ohi);
+                Bitmap yo = toBitmap(image1);
 
                 Uri uri = getImageUri(getApplicationContext(),yo);
 
+                mlkit(uri);
 
+                Log.d("file added", uri.toString());
 
                 String imager = uri.toString();
                 String degree = String.valueOf(rotationDegrees);
-
-
-
-
-
 
                 Data myData = new Data.Builder()
                         .put("image",imager)
                         .put("degree",degree)
                         .build();
 
-
                 WorkRequest uploadWorkRequest =
                         new OneTimeWorkRequest.Builder(worker.class)
                                 .setInputData(myData)
                                 .build();
 
-
-                WorkManager
-                        .getInstance(getApplicationContext())
-                        .enqueue(uploadWorkRequest);
-
+                WorkManager.getInstance(MainActivity.this).enqueue(uploadWorkRequest);
 
             }
         });
         CameraX.bindToLifecycle(this, preview, imageAnalyzer);
+    }
+
+
+    public void mlkit(Uri uri)
+    {
+        FirebaseVisionImage image;
+
+        try {
+            image = FirebaseVisionImage.fromFilePath(getApplicationContext(), uri);
+
+            FirebaseVisionImageLabeler labeler = FirebaseVision.getInstance()
+                    .getOnDeviceImageLabeler();
+
+            labeler.processImage(image)
+                    .addOnSuccessListener(new OnSuccessListener<List<FirebaseVisionImageLabel>>() {
+                        @Override
+                        public void onSuccess(List<FirebaseVisionImageLabel> labels) {
+                            for (FirebaseVisionImageLabel label: labels) {
+
+                                String text = label.getText();
+
+                                float confidence = label.getConfidence();
+
+                                if(confidence>0.7)
+                                {
+                                    //postToastMessage(text);
+                                    myviewmodel.changetext(text);
+                                    Log.d("here is the thing with confidence",text);
+                                }
+
+                            }
+                        }
+                    })
+                    .addOnFailureListener(new OnFailureListener() {
+                        @Override
+                        public void onFailure(@NonNull Exception e) {
+                            Toast.makeText(getApplicationContext(),e.getMessage(),Toast.LENGTH_SHORT).show();
+                        }
+                    });
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void postToastMessage(final String message) {
+        Handler handler = new Handler(Looper.getMainLooper());
+
+        handler.post(new Runnable() {
+
+            @Override
+            public void run() {
+                Toast.makeText(getApplicationContext(), message, Toast.LENGTH_LONG).show();
+            }
+        });
     }
 
     private void updateTransform(){
