@@ -17,6 +17,7 @@ import androidx.core.content.ContextCompat;
 import androidx.fragment.app.FragmentActivity;
 import androidx.lifecycle.LifecycleOwner;
 import androidx.lifecycle.Observer;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.lifecycle.ViewModelProviders;
 import androidx.work.Data;
 import androidx.work.OneTimeWorkRequest;
@@ -31,8 +32,11 @@ import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.ImageFormat;
 import android.graphics.Matrix;
+import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.YuvImage;
 import android.media.Image;
@@ -43,6 +47,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.provider.MediaStore;
 import android.util.Log;
+import android.view.MotionEvent;
 import android.view.Surface;
 import android.view.TextureView;
 import android.view.View;
@@ -79,10 +84,15 @@ public class MainActivity extends AppCompatActivity {
     Button stop;
     ToggleButton flip;
     TextView textView;
+    private Rectangle rectangle;
+
+    private static final double FOCUS_WIDTH_PERCENTAGE = 0.18;
+
 
 
     myviewmodel myviewmodel;
 
+    @SuppressLint("ClickableViewAccessibility")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -94,6 +104,7 @@ public class MainActivity extends AppCompatActivity {
         textView = findViewById(R.id.textView);
 
         getSupportActionBar().hide();
+        rectangle = new Rectangle(this);
 
         if(allPermissiongranted()) {
 
@@ -114,6 +125,24 @@ public class MainActivity extends AppCompatActivity {
                 }
             });
 
+            textureView.setOnTouchListener(new View.OnTouchListener() {
+                @Override
+                public boolean onTouch(View v, MotionEvent event) {
+                    Log.d("working at" , " 1");
+                    if(event.getAction() == MotionEvent.ACTION_DOWN){
+                        focusTappedArea(
+                                event.getX(),
+                                event.getY(),
+                                true
+                        );
+                    }
+                    return true;
+                }
+            });
+
+
+
+
         }
         else
         {
@@ -129,6 +158,94 @@ public class MainActivity extends AppCompatActivity {
                 textView.setText(s);
             }
         });
+
+    }
+
+    private void focusTappedArea(float x, float y, boolean drawRectangle ) {
+
+        try {
+
+            if (drawRectangle)
+            {
+                Log.d("working at" , " 2");
+                drawFocusRectangle((int) x, (int) y);
+            }
+
+        }
+        catch(Exception e)
+        {
+            Toast.makeText(getApplicationContext(),e.getMessage(),Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private class Rectangle extends View {
+        private final Paint paint = new Paint();
+        private int xCoordinate=0, yCoordinate=0;
+        private Handler mHandler = new Handler();
+        private boolean shouldDraw = true;
+        private Rect rect = new Rect(xCoordinate,yCoordinate,0,0);
+
+        public Rectangle(Context context) {
+            super(context);
+        }
+
+        @Override
+        protected void onDraw(final Canvas canvas) {
+
+            paint.setColor(Color.YELLOW);
+            paint.setStyle(Paint.Style.STROKE);
+            paint.setTextSize(24);
+
+            if(shouldDraw)
+            {canvas.drawRect(rect,paint);}
+
+        }
+
+        public void setRect(Rect rect) {this.rect = rect;}
+
+        public void setxCoordinate(int xCoordinate) {
+            this.xCoordinate = xCoordinate;
+        }
+
+        public void setyCoordinate(int yCoordinate) {
+            this.yCoordinate = yCoordinate;
+        }
+
+        public void drawFocusRectangle(){
+            Log.d("working at" , " 4");
+            toggleRectangle(true);
+
+            mHandler.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    shouldDraw =false;
+                    invalidate();
+                }
+            },600L);
+
+        }
+        private void toggleRectangle(boolean visible){
+            Log.d("working at" , " 5");
+            shouldDraw = visible;
+            invalidate();
+        }
+
+    }
+
+
+    private void drawFocusRectangle(int x, int y) {
+        rectangle.setxCoordinate(x);
+        rectangle.setyCoordinate(y);
+        Log.d("working at" , " 3");
+        rectangle.setRect(new Rect(
+                        x,
+                        y,
+                        (int)(x+textureView.getWidth()*FOCUS_WIDTH_PERCENTAGE),
+                        (int)(y+textureView.getHeight()*FOCUS_WIDTH_PERCENTAGE)
+                )
+        );
+
+        rectangle.drawFocusRectangle();
 
     }
 
